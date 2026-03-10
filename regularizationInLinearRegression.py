@@ -51,7 +51,7 @@ selected_indices = np.random.choice(outlier_indices, num_outliers, replace=False
 # Modify the target values at these indices to create outliers (add significant noise)
 y_outlier[selected_indices] += np.random.uniform(50, 100, num_outliers)
 
-
+'''Uncomment if u want to plot data
 ## Plot the data with outliers and the ideal fit line
 plt.figure(figsize=(12, 6))
 
@@ -63,4 +63,25 @@ plt.xlabel('Feature (X)')
 plt.ylabel('Target (y)')
 plt.title('')
 plt.legend()
-plt.show()
+plt.show()'''
+
+# Fit a simple linear regression model
+lin_reg = LinearRegression()
+lin_reg.fit(X, y_outlier)
+y_outlier_pred_lin = lin_reg.predict(X)
+
+# Fit a ridge regression model (regularization to control large coefficients)
+ridge_reg = Ridge(alpha=1)
+ridge_reg.fit(X, y_outlier)
+y_outlier_pred_ridge = ridge_reg.predict(X)
+
+# Fit a lasso regression model (regularization to control large coefficients)
+lasso_reg = Lasso(alpha=.2)
+lasso_reg.fit(X, y_outlier)
+y_outlier_pred_lasso = lasso_reg.predict(X)
+
+
+## Print the regression result 
+regression_results(y, y_outlier_pred_lin, "Ordinary")
+regression_results(y, y_outlier_pred_lasso, "Lasso")
+regression_results(y, y_outlier_pred_ridge, "Ridge")
