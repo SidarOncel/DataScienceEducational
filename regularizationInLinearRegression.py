@@ -5,14 +5,11 @@ Once you remove noise/irrelevant features, a simpler linear model can perform we
 needing regularization penalties. This is ideal behavior—Lasso did its job!
 '''
 
-
-
 '''Ensure the availibilty of all extensions:
 !pip install numpy
 !pip install pandas
 !pip install scikit-learn
 !pip install matplotlib'''
-
 
 #Import the required libraries
 import numpy as np
