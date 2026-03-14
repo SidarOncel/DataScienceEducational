@@ -24,79 +24,86 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
 
-### Load the Titanic dataset using Seaborn
-titanic = sns.load_dataset('titanic')
-print(titanic.head())
-print(titanic.count())
+def load_data():
+    ### Load the Titanic dataset using Seaborn
+    titanic = sns.load_dataset('titanic')
+    print(titanic.head())
+    print(titanic.count())
 
-'''
-Note:  deck has a lot of missing values so we'll drop it. age has quite a few missing values as well.
-Although it could be, embarked and embark_town don't seem relevant '
-'so we'll drop them as well. It's unclear what alive refers to so we'll ignore it.'''
+    '''
+    Note:  deck has a lot of missing values so we'll drop it. age has quite a few missing values as well.
+    Although it could be, embarked and embark_town don't seem relevant 
+    so we'll drop them as well. It's unclear what alive refers to so we'll ignore it.'''
 
-features = ['pclass', 'sex', 'age', 'sibsp', 'parch', 'fare', 'class', 'who', 'adult_male', 'alone']
-target = 'survived'
+    features = ['pclass', 'sex', 'age', 'sibsp', 'parch', 'fare', 'class', 'who', 'adult_male', 'alone']
+    target = 'survived'
 
-X = titanic[features]
-y = titanic[target]
+    X = titanic[features]
+    y = titanic[target]
 
-# How balanced are the classes?
-print(y.value_counts())
-'''
-So about 38% of the passengers in the data set survived.Because of this slight imbalance, 
-we should stratify the data when performing train/test split and for cross-validation'''
+    # How balanced are the classes?
+    print(y.value_counts())
+    '''
+    So about 38% of the passengers in the data set survived.Because of this slight imbalance, 
+    we should stratify the data when performing train/test split and for cross-validation'''
 
-### Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=0.2,stratify=y, random_state=42)
+    ### Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=0.2,stratify=y, random_state=42)
+    
+    return X_train, X_test, y_train, y_test
 
-### Automatically detect numerical and categorical columns 
-# and assign them to separate numeric and categorical features
+def train_model(X_train, X_test, y_train, y_test): 
+    # and assign them to separate numeric and categorical features
 
-numerical_features = X_train.select_dtypes(include=['number']).columns.tolist()
-categorical_features = X_train.select_dtypes(include=['object', 'category']).columns.tolist()
+    numerical_features = X_train.select_dtypes(include=['number']).columns.tolist()
+    categorical_features = X_train.select_dtypes(include=['object', 'category']).columns.tolist()
 
-### Define separate preprocessing pipelines for both feature types
-numerical_transformer = Pipeline(steps=[
-    ('imputer', SimpleImputer(strategy='median')),
-    ('scaler', StandardScaler())
-])
-
-categorical_transformer = Pipeline(steps=[
-    ('imputer', SimpleImputer(strategy='most_frequent')),
-    ('onehot', OneHotEncoder(handle_unknown='ignore'))
-])
-
-'''
-We'll use the sklearn "column transformer" estimator to separately transform the features, which
-will then concatenate the output as a single feature space, ready for input to a machine learning estimator.'''
-
-preprocessor = ColumnTransformer(
-    transformers=[
-        ('num', numerical_transformer, numerical_features),
-        ('cat', categorical_transformer, categorical_features)
+    ### Define separate preprocessing pipelines for both feature types
+    numerical_transformer = Pipeline(steps=[
+        ('imputer', SimpleImputer(strategy='median')),
+        ('scaler', StandardScaler())
     ])
 
+    categorical_transformer = Pipeline(steps=[
+        ('imputer', SimpleImputer(strategy='most_frequent')),
+        ('onehot', OneHotEncoder(handle_unknown='ignore'))
+    ])
 
-### Create a model pipeline 
-pipeline = Pipeline(steps=[
-    ('preprocessor', preprocessor),
-    ('classifier', RandomForestClassifier(random_state=42))
-])
+    '''
+    We'll use the sklearn "column transformer" estimator to separately transform the features, which
+    will then concatenate the output as a single feature space, ready for input to a machine learning estimator.'''
 
-### Define a parameter grid, we'll use the grid in a cross validation search to optimize the model
-param_grid = {
-    'classifier__n_estimators': [50, 100],
-    'classifier__max_depth': [None, 10, 20],
-    'classifier__min_samples_split': [2, 5]
-}
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', numerical_transformer, numerical_features),
+            ('cat', categorical_transformer, categorical_features)
+        ])
 
-### Perform grid search cross-validation and fit the best model to the training data.
-cv = StratifiedKFold(n_splits=5, shuffle=True) # Cross validation
 
-### Train the the model 
-model = GridSearchCV(estimator=pipeline , param_grid=param_grid, cv=cv, scoring='accuracy', verbose=2)
-model.fit(X_train, y_train)
+    ### Create a model pipeline 
+    pipeline = Pipeline(steps=[
+        ('preprocessor', preprocessor),
+        ('classifier', RandomForestClassifier(random_state=42))
+    ])
 
-### Get the model predictions from the grid search estimator on the unseen data
-y_pred = model.predict(X_test)
-print(classification_report(y_test,y_pred))
+    ### Define a parameter grid, we'll use the grid in a cross validation search to optimize the model
+    param_grid = {
+        'classifier__n_estimators': [50, 100],
+        'classifier__max_depth': [None, 10, 20],
+        'classifier__min_samples_split': [2, 5]
+    }
+
+    ### Perform grid search cross-validation and fit the best model to the training data.
+    cv = StratifiedKFold(n_splits=5, shuffle=True) # Cross validation
+
+    ### Train the the model 
+    model = GridSearchCV(estimator=pipeline , param_grid=param_grid, cv=cv, scoring='accuracy', verbose=2)
+    model.fit(X_train, y_train)
+
+    ### Get the model predictions from the grid search estimator on the unseen data
+    y_pred = model.predict(X_test)
+    print(classification_report(y_test,y_pred))
+
+if __name__ == '__main__':
+    X_train, X_test, y_train, y_test = load_data()
+    train_model(X_train, X_test, y_train, y_test)
