@@ -23,6 +23,9 @@ from sklearn.impute import SimpleImputer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
+import sys
+import os
+import pickle
 
 def load_data():
     ### Load the Titanic dataset using Seaborn
@@ -49,6 +52,10 @@ def load_data():
 
     ### Split the data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=0.2,stratify=y, random_state=42)
+    
+    # Save processed data for later use
+    with open('processed_data.pkl', 'wb') as f:
+        pickle.dump((X_train, X_test, y_train, y_test), f)
     
     return X_train, X_test, y_train, y_test
 
@@ -104,6 +111,78 @@ def train_model(X_train, X_test, y_train, y_test):
     y_pred = model.predict(X_test)
     print(classification_report(y_test,y_pred))
 
+    ### Plot the confusion matrix
+
+    conf_matrix = confusion_matrix(y_test, y_pred)
+    plt.figure()
+    sns.heatmap(conf_matrix, annot=True, cmap='Blues', fmt='d')
+
+    # Set the title and labels
+    plt.title('Titanic Classification Confusion Matrix')
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
+
+    # Show the plot
+    plt.tight_layout()
+    plt.savefig('confusion_matrix.png')  # Save to file instead of showing
+    print("Confusion matrix saved to confusion_matrix.png")
+
+    ### Feature importances
+    # Here's how you trace back through the trained model to access the one-hot encoded feature names:
+    feature_names = model.best_estimator_['preprocessor'].named_transformers_['cat'].named_steps['onehot'].get_feature_names_out(categorical_features)
+    print("One-hot encoded feature names:", feature_names)
+
+    feature_importances = model.best_estimator_['classifier'].feature_importances_
+
+    # Combine the numerical and one-hot encoded categorical feature names
+    feature_names = numerical_features + list(model.best_estimator_['preprocessor']
+                                            .named_transformers_['cat']
+                                            .named_steps['onehot']
+                                            .get_feature_names_out(categorical_features))
+    print("All feature names:", feature_names)
+    print("Feature importances:", feature_importances)
+
+    importance_df = pd.DataFrame({'Feature': feature_names,
+                                'Importance': feature_importances
+                                }).sort_values(by='Importance', ascending=False)
+
+    # Plotting
+    plt.figure(figsize=(10, 6))
+    plt.barh(importance_df['Feature'], importance_df['Importance'], color='skyblue')
+    plt.gca().invert_yaxis() 
+    plt.title('Most Important Features in predicting whether a passenger survived')
+    plt.xlabel('Importance Score')
+    plt.show()
+
+    # Print test score 
+    test_score = model.score(X_test, y_test)
+    print(f"\nTest set accuracy: {test_score:.2%}")
+    '''
+    The test set accuracy is somewhat satisfactory. However,regarding the feature impoirtances,it's crucially 
+    important to realize that there is most likely plenty of dependence amongst these variables, and a more 
+    detailed modelling approach including correlation analysis is required to draw proper conclusions.For example, 
+    no doubt there is significant information shared by the variables `age`, `sex_male`, and `who_man`.'''
+
+
+    return model,categorical_features,numerical_features
+
 if __name__ == '__main__':
-    X_train, X_test, y_train, y_test = load_data()
-    train_model(X_train, X_test, y_train, y_test)
+    load_data_flag = '--load-data' in sys.argv or len(sys.argv) == 1  # Default to load if no flags
+    train_model_flag = '--train-model' in sys.argv or len(sys.argv) == 1  # Default to train if no flags
+    
+    X_train, X_test, y_train, y_test = None, None, None, None
+    
+    if load_data_flag:
+        print("Loading data...")
+        X_train, X_test, y_train, y_test = load_data()
+    elif os.path.exists('processed_data.pkl'):
+        print("Loading saved data...")
+        with open('processed_data.pkl', 'rb') as f:
+            X_train, X_test, y_train, y_test = pickle.load(f)
+    else:
+        print("No data available. Run with --load-data first.")
+        sys.exit(1)
+    
+    if train_model_flag:
+        print("Training model...")
+        train_model(X_train, X_test, y_train, y_test)
