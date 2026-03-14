@@ -92,3 +92,11 @@ param_grid = {
 
 ### Perform grid search cross-validation and fit the best model to the training data.
 cv = StratifiedKFold(n_splits=5, shuffle=True) # Cross validation
+
+### Train the the model 
+model = GridSearchCV(estimator=pipeline , param_grid=param_grid, cv=cv, scoring='accuracy', verbose=2)
+model.fit(X_train, y_train)
+
+### Get the model predictions from the grid search estimator on the unseen data
+y_pred = model.predict(X_test)
+print(classification_report(y_test,y_pred))
