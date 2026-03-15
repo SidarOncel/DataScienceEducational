@@ -131,3 +131,119 @@ print("Best cross-validation score: {:.2f}".format(grid_search.best_score_))
 # Display your model's estimated score
 test_score = grid_search.score(X_test,y_test)  
 print("Test set score: {:.2f}".format(test_score))
+
+# Get the model predictions from the grid search estimator on the unseen data
+y_pred = grid_search.predict(X_test)
+
+# Print the classification report
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred))
+
+# Plot the confusion matrix
+conf_matrix = confusion_matrix(y_test, y_pred)
+disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix)
+disp.plot(cmap='Blues')
+plt.title('Confusion Matrix')
+plt.show()
+
+# Extract the feature importances
+feature_importances = grid_search.best_estimator_['model'].feature_importances_
+
+# Now let's extract the feature importances and plot them as a bar graph.
+# Combine numeric and categorical feature names
+feature_names = numeric_features + list(
+    grid_search.best_estimator_['preprocessor']
+    .named_transformers_['cat']
+    .named_steps['onehot']
+    .get_feature_names_out(categorical_features)
+)
+
+feature_importances = grid_search.best_estimator_['model'].feature_importances_
+
+importance_df = pd.DataFrame({
+    'Feature': feature_names,
+    'Importance': feature_importances
+}).sort_values(by='Importance', ascending=False)
+
+N = 20
+top_features = importance_df.head(N)
+
+# Plotting
+plt.figure(figsize=(10, 6))
+plt.barh(top_features['Feature'], top_features['Importance'], color='skyblue')
+plt.gca().invert_yaxis()
+
+plt.title(f'Top {N} Most Important Features in predicting whether it will rain today')
+plt.xlabel('Importance Score')
+plt.show()
+
+'''Test set score: 0.85
+
+Classification Report:
+              precision    recall  f1-score   support
+
+          No       0.87      0.95      0.91      1168
+         Yes       0.76      0.53      0.62       344
+
+    accuracy                           0.85      1512
+   macro avg       0.82      0.74      0.77      1512
+weighted avg       0.85      0.85      0.84      1512'''
+
+'''
+Update the pipeline and the parameter grid
+Let's update the pipeline and the parameter grid and train a '
+'Logistic Regression model and compare the performance of the two models. '
+'You'll need to replace the clasifier with LogisticRegression.
+We have supplied the parameter grid for you.'''
+
+# Replace the RandomForestClassifier in the pipeline with LogisticRegression
+# We update the pipeline step called "model"
+pipeline.set_params(model=LogisticRegression(random_state=42))
+# Update the GridSearchCV estimator so it now uses the modified pipeline
+grid_search.estimator = pipeline
+# Define a new parameter grid for Logistic Regression
+# Note: parameters must start with the pipeline step name "model__"
+param_grid = {
+    'model__solver': ['liblinear'],      # Optimization algorithm suitable for small datasets and L1/L2 penalties
+    'model__penalty': ['l1', 'l2'],      # Regularization type
+    'model__class_weight': [None, 'balanced']  # Handle class imbalance
+}
+# Update GridSearchCV with the new parameter grid
+grid_search.param_grid = param_grid
+
+# Fit the grid search again using the Logistic Regression pipeline
+# This will test all parameter combinations using cross-validation
+grid_search.fit(X_train, y_train)
+
+# Use the best model found by GridSearch to make predictions on the test set
+y_pred = grid_search.predict(X_test)
+
+
+# Compare the results to our previous model
+
+print(classification_report(y_test, y_pred))
+
+# Generate the confusion matrix 
+conf_matrix = confusion_matrix(y_test, y_pred)
+
+plt.figure()
+sns.heatmap(conf_matrix, annot=True, cmap='Blues', fmt='d')
+
+# Set the title and labels
+plt.title('Titanic Classification Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+
+# Show the plot
+plt.tight_layout()
+plt.show()
+
+'''
+              precision    recall  f1-score   support
+
+          No       0.87      0.93      0.90      1168
+         Yes       0.70      0.51      0.59       344
+
+    accuracy                           0.84      1512
+   macro avg       0.78      0.72      0.74      1512
+weighted avg       0.83      0.84      0.83      1512'''
